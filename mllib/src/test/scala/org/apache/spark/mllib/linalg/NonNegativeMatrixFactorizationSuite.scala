@@ -71,7 +71,7 @@ class NonNegativeMatrixFactorizationSuite extends SparkFunSuite with MLlibTestSp
       loss += diff * diff
     }
 
-    assert(loss < 1.5)
+    assert(loss < 2)
   }
 
 }
