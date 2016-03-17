@@ -102,7 +102,7 @@ private[mllib] class GaussianNMFUpdater extends NMFUpdater {
 
 /**
  * Compute Non-Negative Matrix Factorization. Find two non-negative matrices (W, H) whose product
- * W * H^T^ approximates the non-negative matrix X. This factorization can be used for example for
+ * W * H^T^ approximates the non-negative matrix A. This factorization can be used for example for
  * dimensionality reduction, source separation or topic extraction.
  */
 @Since("2.0.0")
