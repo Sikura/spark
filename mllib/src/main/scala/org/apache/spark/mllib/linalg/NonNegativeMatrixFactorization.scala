@@ -19,20 +19,30 @@ package org.apache.spark.mllib.linalg
 
 import breeze.linalg.{DenseMatrix => BDM}
 
+import org.apache.spark.annotation.{Experimental, Since}
 import org.apache.spark.Logging
 import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, IndexedRow, IndexedRowMatrix, MatrixEntry}
 import org.apache.spark.mllib.random.RandomRDDs._
 import org.apache.spark.util.Utils.random
 
-//
+// Updater that will be used to update W and H iteratively.
+@Since("2.0.0")
+@Experimental
 trait NMFUpdater {
+  // Update Matrix H. When called with (A^^T, H, W), it can be used to update Matrix W.
   def update(A: CoordinateMatrix,
       W: IndexedRowMatrix,
       H: IndexedRowMatrix): IndexedRowMatrix
 }
 
+/**
+ * Updater for Gaussian NMF. The corresponding objective function is Squared Loss :
+ * ||A - W*H^T^ ||^2^.
+ * dimensionality reduction, source separation or topic extraction.
+ */
+@Since("2.0.0")
+@Experimental
 class GaussianNMFUpdater extends NMFUpdater {
-
   override def update(A: CoordinateMatrix,
       W: IndexedRowMatrix,
       H: IndexedRowMatrix): IndexedRowMatrix = {
@@ -88,6 +98,8 @@ class GaussianNMFUpdater extends NMFUpdater {
  * W * H^^T approximates the non- negative matrix X. This factorization can be used for example for
  * dimensionality reduction, source separation or topic extraction.
  */
+@Since("2.0.0")
+@Experimental
 object NMF extends Enumeration with Logging {
 
   // Todo: Add Poisson and Exponential types in the future, if needed
@@ -118,7 +130,6 @@ object NMF extends Enumeration with Logging {
 
     NMFDecomposition(W, H)
   }
-
 
   def solve(A: CoordinateMatrix,
       k: Int,
@@ -174,7 +185,15 @@ object NMF extends Enumeration with Logging {
     solve(A, k, numIterations, initW, initH, updater)
   }
 
-
+  /**
+   * Computes the Non-Negative Matrix Factorization of non-negative matrix A.
+   * @param A the non-negative matrix to be factorized.
+   * @param k the number of components.
+   * @param numIterations number of iterations.
+   * @param dist the type of NMF, now only Gaussian is supported.
+   * @param seed the seed to initialize matrix W and H.
+   * @return the NMF result of A
+   */
   def solve(A: CoordinateMatrix,
       k: Int,
       numIterations: Int,
