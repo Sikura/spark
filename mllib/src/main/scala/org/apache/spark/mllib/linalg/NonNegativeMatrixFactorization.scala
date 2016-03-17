@@ -28,8 +28,8 @@ import org.apache.spark.util.Utils.random
 // Updater that will be used to update W and H iteratively.
 @Since("2.0.0")
 @Experimental
-trait NMFUpdater {
-  // Update Matrix H. When called with (A^^T, H, W), it can be used to update Matrix W.
+private[mllib] trait NMFUpdater {
+  // Update Matrix H. When called with (A^T^, H, W), it can be used to update Matrix W.
   def update(A: CoordinateMatrix,
       W: IndexedRowMatrix,
       H: IndexedRowMatrix): IndexedRowMatrix
@@ -38,11 +38,14 @@ trait NMFUpdater {
 /**
  * Updater for Gaussian NMF. The corresponding objective function is Squared Loss :
  * ||A - W*H^T^ ||^2^.
- * dimensionality reduction, source separation or topic extraction.
+ * @see [[http://research.microsoft.com/pubs/119077/DNMF.pdf
+ *     Chao Liu, Hung-chih Yang, Jinliang Fan, Li-Wei He and Yi-Min Wang, WWW, 2010.]]
+ * @see [[http://papers.nips.cc/paper/1861-algorithms-for-non-negative-matrix-factorization.pdf
+ *     Daniel D. Lee and H. Sebastian Seung, NIPS, 2000.]]
  */
 @Since("2.0.0")
 @Experimental
-class GaussianNMFUpdater extends NMFUpdater {
+private[mllib] class GaussianNMFUpdater extends NMFUpdater {
   override def update(A: CoordinateMatrix,
       W: IndexedRowMatrix,
       H: IndexedRowMatrix): IndexedRowMatrix = {
@@ -57,6 +60,7 @@ class GaussianNMFUpdater extends NMFUpdater {
     val w = W.rows.map(r => (r.index, r.vector.toBreeze.toDenseVector))
     val h = H.rows.map(r => (r.index, r.vector.toBreeze.toDenseVector))
 
+    // Compute X = W^T^ * A.
     val x = a.join(w).map {
       case (i, ((j, v), wi)) =>
         (j, wi * v)
@@ -66,6 +70,7 @@ class GaussianNMFUpdater extends NMFUpdater {
         v1
     }
 
+    // Compute W^T^ * W.
     val wTw = w.map {
       case (i, wi) =>
         val m = new BDM[Double](k, 1, wi.toArray)
@@ -78,11 +83,13 @@ class GaussianNMFUpdater extends NMFUpdater {
 
     val bcwTw = sc.broadcast(wTw)
 
+    // Compute Y = W^T^ * W * H.
     val y = h.map {
       case (j, hj) =>
         (j, bcwTw.value * hj)
     }
 
+    // Update H_new = H_old .* X ./ Y.
     val hNew = x.join(y).join(h).map {
       case (j, ((xj, yj), hj)) =>
         val r = hj :* xj :/ yj
@@ -95,16 +102,25 @@ class GaussianNMFUpdater extends NMFUpdater {
 
 /**
  * Compute Non-Negative Matrix Factorization. Find two non-negative matrices (W, H) whose product
- * W * H^^T approximates the non- negative matrix X. This factorization can be used for example for
+ * W * H^T^ approximates the non- negative matrix X. This factorization can be used for example for
  * dimensionality reduction, source separation or topic extraction.
  */
 @Since("2.0.0")
 @Experimental
 object NMF extends Enumeration with Logging {
-
   // Todo: Add Poisson and Exponential types in the future, if needed
   val Gaussian = Value
 
+  /**
+   * Computes the Non-Negative Matrix Factorization of non-negative matrix A.
+   * @param A the non-negative matrix to be factorized.
+   * @param k the number of components.
+   * @param numIterations number of iterations.
+   * @param initW the initial matrix W, must be non-negative.
+   * @param initH the initial matrix W, must be non-negative.
+   * @param updater the NMFUpdater to update W and H.
+   * @return the NMF result of A.
+   */
   private def solve(A: CoordinateMatrix,
       k: Int,
       numIterations: Int,
@@ -131,6 +147,16 @@ object NMF extends Enumeration with Logging {
     NMFDecomposition(W, H)
   }
 
+  /**
+   * Computes the Non-Negative Matrix Factorization of non-negative matrix A.
+   * @param A the non-negative matrix to be factorized.
+   * @param k the number of components.
+   * @param numIterations number of iterations.
+   * @param dist the type of NMF, now only Gaussian is supported.
+   * @param initW the initial matrix W, must be non-negative.
+   * @param initH the initial matrix W, must be non-negative.
+   * @return the NMF result of A.
+   */
   def solve(A: CoordinateMatrix,
       k: Int,
       numIterations: Int,
@@ -192,7 +218,7 @@ object NMF extends Enumeration with Logging {
    * @param numIterations number of iterations.
    * @param dist the type of NMF, now only Gaussian is supported.
    * @param seed the seed to initialize matrix W and H.
-   * @return the NMF result of A
+   * @return the NMF result of A.
    */
   def solve(A: CoordinateMatrix,
       k: Int,
