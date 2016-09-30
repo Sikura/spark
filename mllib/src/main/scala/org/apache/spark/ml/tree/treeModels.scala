@@ -357,10 +357,10 @@ private[ml] object DecisionTreeModelReadWrite {
     // Load all nodes, sorted by ID.
     val nodes = data.sortBy(_.id)
     // Sanity checks; could remove
-    assert(nodes.head.id == 0, s"Decision Tree load failed.  Expected smallest node ID to be 0," +
+    assert(nodes.head.id == 0, s"Decision Tree load failed. Smallest node ID expected to be 0," +
       s" but found ${nodes.head.id}")
-    assert(nodes.last.id == nodes.length - 1, s"Decision Tree load failed.  Expected largest" +
-      s" node ID to be ${nodes.length - 1}, but found ${nodes.last.id}")
+    assert(nodes.last.id == nodes.length - 1, s"Decision Tree load failed. Largest node ID" +
+      s" expected to be ${nodes.length - 1}, but found ${nodes.last.id}")
     // We fill `finalNodes` in reverse order.  Since node IDs are assigned via a pre-order
     // traversal, this guarantees that child nodes will be built before parent nodes.
     val finalNodes = new Array[Node](nodes.length)

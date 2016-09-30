@@ -71,7 +71,7 @@ private[clustering] trait LDAParams extends Params with HasFeaturesCol with HasM
    *
    * If not set by the user, then docConcentration is set automatically. If set to
    * singleton vector [alpha], then alpha is replicated to a vector of length k in fitting.
-   * Otherwise, the [[docConcentration]] vector must be length k.
+   * Otherwise, the [[docConcentration]] vector must be of length k.
    * (default = automatic)
    *
    * Optimizer-specific parameter settings:

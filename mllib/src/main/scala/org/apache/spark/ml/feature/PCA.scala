@@ -140,7 +140,7 @@ class PCAModel private[ml] (
 
   /**
    * Transform a vector by computed Principal Components.
-   * NOTE: Vectors to be transformed must be the same length
+   * NOTE: Vectors to be transformed must be of the same length
    * as the source vectors given to [[PCA.fit()]].
    */
   @Since("2.0.0")
