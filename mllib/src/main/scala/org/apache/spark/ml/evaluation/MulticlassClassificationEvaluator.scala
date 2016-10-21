@@ -35,20 +35,25 @@ import org.apache.spark.sql.types.DoubleType
 class MulticlassClassificationEvaluator @Since("1.5.0") (@Since("1.5.0") override val uid: String)
   extends Evaluator with HasPredictionCol with HasLabelCol with DefaultParamsWritable {
 
+  private var label : Option[Double] = None
+
   @Since("1.5.0")
   def this() = this(Identifiable.randomUID("mcEval"))
 
   /**
    * param for metric name in evaluation (supports `"f1"` (default), `"weightedPrecision"`,
-   * `"weightedRecall"`, `"accuracy"`)
+   * `"weightedRecall"`, `"accuracy"`, `"precision"`, `"recall"`, `"truePositiveRate"`,
+   * `"falsePositiveRate"`)
    * @group param
    */
   @Since("1.5.0")
   val metricName: Param[String] = {
     val allowedParams = ParamValidators.inArray(Array("f1", "weightedPrecision",
-      "weightedRecall", "accuracy"))
+      "weightedRecall", "accuracy", "precision", "recall", "truePositiveRate",
+      "falsePositiveRate"))
     new Param(this, "metricName", "metric name in evaluation " +
-      "(f1|weightedPrecision|weightedRecall|accuracy)", allowedParams)
+      "(f1|weightedPrecision|weightedRecall|accuracy|precision|recall|truePositiveRate" +
+      "|falsePositiveRate)", allowedParams)
   }
 
   /** @group getParam */
@@ -67,10 +72,33 @@ class MulticlassClassificationEvaluator @Since("1.5.0") (@Since("1.5.0") overrid
   @Since("1.5.0")
   def setLabelCol(value: String): this.type = set(labelCol, value)
 
+  /** @group getParam */
+  @Since("2.1.0")
+  def getLabel: Double = label.get
+
+  /** @group setParam */
+  @Since("2.1.0")
+  def setLabel(value: Double): this.type = {
+    label = Some(value)
+    this
+  }
+
+  /** @group setParam */
+  @Since("2.1.0")
+  def unsetLabel: this.type = {
+    label = None
+    this
+  }
+
   setDefault(metricName -> "f1")
 
   @Since("2.0.0")
   override def evaluate(dataset: Dataset[_]): Double = {
+    if (Set("precision", "recall", "truePositiveRate", "falsePositiveRate")
+      .contains($(metricName))) {
+      require(label.nonEmpty, s"Metric ${$(metricName)} must be used with label.")
+    }
+
     val schema = dataset.schema
     SchemaUtils.checkColumnType(schema, $(predictionCol), DoubleType)
     SchemaUtils.checkNumericType(schema, $(labelCol))
@@ -80,17 +108,24 @@ class MulticlassClassificationEvaluator @Since("1.5.0") (@Since("1.5.0") overrid
         case Row(prediction: Double, label: Double) => (prediction, label)
       }
     val metrics = new MulticlassMetrics(predictionAndLabels)
-    val metric = $(metricName) match {
-      case "f1" => metrics.weightedFMeasure
-      case "weightedPrecision" => metrics.weightedPrecision
-      case "weightedRecall" => metrics.weightedRecall
-      case "accuracy" => metrics.accuracy
+    val metric = ($(metricName), label) match {
+      // weighted metrics
+      case ("f1", None) => metrics.weightedFMeasure
+      case ("weightedPrecision", _) => metrics.weightedPrecision
+      case ("weightedRecall", _) => metrics.weightedRecall
+      case ("accuracy", _) => metrics.accuracy
+      // metrics per label
+      case ("f1", Some(l)) => metrics.fMeasure(l)
+      case ("precision", Some(l)) => metrics.precision(l)
+      case ("recall", Some(l)) => metrics.recall(l)
+      case ("truePositiveRate", Some(l)) => metrics.truePositiveRate(l)
+      case ("falsePositiveRate", Some(l)) => metrics.falsePositiveRate(l)
     }
     metric
   }
 
   @Since("1.5.0")
-  override def isLargerBetter: Boolean = true
+  override def isLargerBetter: Boolean = $(metricName) != "falsePositiveRate"
 
   @Since("1.5.0")
   override def copy(extra: ParamMap): MulticlassClassificationEvaluator = defaultCopy(extra)
