@@ -330,6 +330,8 @@ class KMeans @Since("1.5.0") (
       .setEpsilon($(tol))
       .setDistanceMeasure($(distanceMeasure))
     val parentModel = algo.run(instances, Option(instr))
+    val numFeatures = parentModel.clusterCenters.head.size
+    instr.logNumFeatures(numFeatures)
     val model = copyValues(new KMeansModel(uid, parentModel).setParent(this))
     val summary = new KMeansSummary(
       model.transform(dataset), $(predictionCol), $(featuresCol), $(k))

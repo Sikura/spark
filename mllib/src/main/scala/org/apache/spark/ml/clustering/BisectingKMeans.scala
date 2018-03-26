@@ -274,6 +274,8 @@ class BisectingKMeans @Since("2.0.0") (
       .setSeed($(seed))
       .setDistanceMeasure($(distanceMeasure))
     val parentModel = bkm.run(rdd)
+    val numFeatures = parentModel.clusterCenters.head.size
+    instr.logNumFeatures(numFeatures)
     val model = copyValues(new BisectingKMeansModel(uid, parentModel).setParent(this))
     val summary = new BisectingKMeansSummary(
       model.transform(dataset), $(predictionCol), $(featuresCol), $(k))
